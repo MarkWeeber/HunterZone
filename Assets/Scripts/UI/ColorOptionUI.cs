@@ -16,11 +16,7 @@ namespace HunterZone.Space
         private void Start()
         {
             colorOptionButtons = GetComponentsInChildren<Button>().ToList();
-            Color = new Color (
-                PlayerPrefs.GetFloat(GlobalStringVars.PREFS_COLOR_R, 0),
-                PlayerPrefs.GetFloat(GlobalStringVars.PREFS_COLOR_G, 1),
-                PlayerPrefs.GetFloat(GlobalStringVars.PREFS_COLOR_B, 0),
-                1);
+            Color = ClientManager.Instance.PlayerConfig.Color;
             colorPreviwer.color = Color;
         }
 

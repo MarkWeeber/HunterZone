@@ -15,7 +15,7 @@ namespace HunterZone.Space
 
         private void Start()
         {
-            playerNameInputField.text = PlayerPrefs.GetString(GlobalStringVars.PREFS_NAME, string.Empty);
+            playerNameInputField.text = ClientManager.Instance.PlayerConfig.Name;
         }
 
         public void SavePlayerSettings()
@@ -28,6 +28,8 @@ namespace HunterZone.Space
                     PlayerPrefs.SetFloat(GlobalStringVars.PREFS_COLOR_R, ColorOptionUI.Color.r);
                     PlayerPrefs.SetFloat(GlobalStringVars.PREFS_COLOR_G, ColorOptionUI.Color.g);
                     PlayerPrefs.SetFloat(GlobalStringVars.PREFS_COLOR_B, ColorOptionUI.Color.b);
+                    ClientManager.Instance.PlayerConfig.Name = playerNameInputField.text;
+                    ClientManager.Instance.PlayerConfig.Color = ColorOptionUI.Color;
                     InformationPanelUI.Instance.SendInformation("Save Successful!", InfoMessageType.SUCCESS);
                 }
                 else
