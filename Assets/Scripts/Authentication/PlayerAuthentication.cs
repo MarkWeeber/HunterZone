@@ -36,7 +36,12 @@ namespace HunterZone.Space
 
         private void HandleAuthenticated()
         {
-            InformationPanelUI.Instance.SendInformation("Signed In Successfuly", InfoMessageType.SUCCESS);
+            InformationPanelUI.Instance.SendInformation("Signed In Successfuly", InfoMessageType.NOTE);
+        }
+
+        private void OnDestroy()
+        {
+            AuthenticationService.Instance.SignedIn -= HandleAuthenticated;
         }
     }
 }

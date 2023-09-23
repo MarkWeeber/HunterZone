@@ -11,6 +11,8 @@ namespace HunterZone.Space
     {
         public event Action<bool> FireEvent;
         public event Action<Vector2> MovementEvent;
+        public event Action<bool> EscapeAction;
+        public event Action Escape;
 
         private Controls controls;
 
@@ -38,6 +40,19 @@ namespace HunterZone.Space
             else if (context.canceled)
             {
                 FireEvent?.Invoke(false);
+            }
+        }
+
+        public void OnEscape(InputAction.CallbackContext context)
+        {
+            if (context.performed)
+            {
+                EscapeAction?.Invoke(true);
+                Escape?.Invoke();
+            }
+            else if (context.canceled)
+            {
+                EscapeAction?.Invoke(false);
             }
         }
     }

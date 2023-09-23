@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Unity.Services.Authentication;
 using Unity.Services.Lobbies;
 using Unity.Services.Lobbies.Models;
 using UnityEngine;
@@ -27,6 +28,7 @@ namespace HunterZone.Space
         public Lobby Lobby { get; private set; }
 
         private bool joining = false;
+        private bool leavingLobby = false;
 
         private void Awake()
         {
@@ -62,11 +64,10 @@ namespace HunterZone.Space
                     )
                 };
                 QueryResponse queryResponse = await Lobbies.Instance.QueryLobbiesAsync(_lobbyQueryOptions);
-                Debug.Log(queryResponse.Results.Count);
                 if (queryResponse.Results.Count > 0)
                 {
                     Lobby = queryResponse.Results[0];
-                    JoinLobbyByIdOptions joinLobbyByIdOptions = new JoinLobbyByIdOptions()
+                    JoinLobbyByIdOptions _joinLobbyByIdOptions = new JoinLobbyByIdOptions()
                     {
                         Player = new Player
                         {
@@ -78,8 +79,8 @@ namespace HunterZone.Space
                             }
                         }
                     };
-                    //await Lobbies.Instance.JoinLobbyByIdAsync(Lobby.Id); // joining lobby
-                    InformationPanelUI.Instance.SendInformation($"Lobby with name {lobbyName} found successfuly!", InfoMessageType.SUCCESS);
+                    Lobby = await Lobbies.Instance.JoinLobbyByIdAsync(Lobby.Id, _joinLobbyByIdOptions); // joining lobby
+                    InformationPanelUI.Instance.SendInformation($"Joined successfuly to {lobbyName} lobby", InfoMessageType.SUCCESS);
                 }
                 else
                 {
@@ -91,8 +92,32 @@ namespace HunterZone.Space
             catch (LobbyServiceException exception)
             {
                 Debug.LogException(exception);
-                InformationPanelUI.Instance.SendInformation(exception.ToString(), InfoMessageType.ERROR);
+                InformationPanelUI.Instance.SendInformation("Lobby service error", InfoMessageType.ERROR);
                 joining = false;
+            }
+        }
+
+        public async Task<bool?> LeaveLobbyAsync()
+        {
+            if (leavingLobby || Lobby == null)
+            {
+                return null;
+            }
+            leavingLobby = true;
+            try
+            {
+                await LobbyService.Instance.RemovePlayerAsync(Lobby.Id, AuthenticationService.Instance.PlayerId);
+                InformationPanelUI.Instance.SendInformation("Lobby left", InfoMessageType.NOTE);
+                Lobby = null;
+                leavingLobby = false;
+                return true;
+            }
+            catch (LobbyServiceException exception)
+            {
+                Debug.Log(exception);
+                InformationPanelUI.Instance.SendInformation("Lobby service error", InfoMessageType.ERROR);
+                leavingLobby = false;
+                return false;
             }
         }
     }

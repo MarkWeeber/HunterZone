@@ -10,7 +10,7 @@ namespace HunterZone.Space
     public class HostManager : MonoBehaviour
     {
         [SerializeField] private int maxPlayer = 8;
-        public Lobby lobby {  get; private set; }
+        public Lobby Lobby {  get; private set; }
 
         private static HostManager instance;
         public static HostManager Instance
@@ -26,6 +26,7 @@ namespace HunterZone.Space
         }
         private float heartBeatTimer = 0f;
         private bool creatingLobby = false;
+        private bool closingLobby = false;
 
         private void Awake()
         {
@@ -35,18 +36,18 @@ namespace HunterZone.Space
 
         private void Update()
         {
-            //HandleLobbyHeartBeat();
+            HandleLobbyHeartBeat();
         }
 
         private async void HandleLobbyHeartBeat()
         {
-            if (lobby != null)
+            if (Lobby != null)
             {
                 heartBeatTimer -= Time.deltaTime;
                 if (heartBeatTimer <= 0f)
                 {
-                    await Lobbies.Instance.SendHeartbeatPingAsync(lobby.Id);
                     heartBeatTimer = 15f;
+                    await Lobbies.Instance.SendHeartbeatPingAsync(Lobby.Id);
                 }
             }
         }
@@ -71,15 +72,10 @@ namespace HunterZone.Space
                                 "PlayerName", new PlayerDataObject(PlayerDataObject.VisibilityOptions.Member, ClientManager.Instance.PlayerConfig.Name)
                             }
                         }
-                    },
-                    Data = new Dictionary<string, DataObject>
-                    {
-                        { "LobbyName", new DataObject(DataObject.VisibilityOptions.Public, lobbyName, DataObject.IndexOptions.S1) }
                     }
                 };
-                _options.IsPrivate = true;
-                lobby = await Lobbies.Instance.CreateLobbyAsync(lobbyName, maxPlayer, _options);
-                InformationPanelUI.Instance.SendInformation($"Lobby with name {lobby.Name} created successfuly!", InfoMessageType.SUCCESS);
+                Lobby = await Lobbies.Instance.CreateLobbyAsync(lobbyName, maxPlayer, _options);
+                InformationPanelUI.Instance.SendInformation($"Lobby with name {Lobby.Name} created successfuly!", InfoMessageType.SUCCESS);
                 creatingLobby = false;
                 heartBeatTimer = 15f;
             }
@@ -88,6 +84,30 @@ namespace HunterZone.Space
                 Debug.LogException(exception);
                 InformationPanelUI.Instance.SendInformation(exception.ToString(), InfoMessageType.ERROR);
                 creatingLobby = false;
+            }
+        }
+
+        public async Task<bool?> CloseLobbyAsync()
+        {
+            if (closingLobby || Lobby == null)
+            {
+                return null;
+            }
+            closingLobby = true;
+            try
+            {
+                await LobbyService.Instance.DeleteLobbyAsync(Lobby.Id);
+                InformationPanelUI.Instance.SendInformation("Lobby closed", InfoMessageType.NOTE);
+                Lobby = null;
+                closingLobby = false;
+                return true;
+            }
+            catch (LobbyServiceException exception)
+            {
+                Debug.Log(exception);
+                InformationPanelUI.Instance.SendInformation("Lobby service error", InfoMessageType.ERROR);
+                closingLobby = false;
+                return false;
             }
         }
     }
