@@ -23,10 +23,6 @@ namespace HunterZone.Space
         {
             get
             {
-                if (instance == null)
-                {
-                    instance = new InformationPanelUI();
-                }
                 return instance;
             }
         }

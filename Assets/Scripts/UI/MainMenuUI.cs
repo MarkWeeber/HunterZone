@@ -39,7 +39,7 @@ namespace HunterZone.Space
             }
             else
             {
-                InformationPanelUI.Instance.SendInformation($"Lobby name must be at least {minLobbyNameLength} symbols and {maxLobbyNameLength} max ", InfoMessageType.WARNING);
+                InformationPanelUI.Instance?.SendInformation($"Lobby name must be at least {minLobbyNameLength} symbols and {maxLobbyNameLength} max ", InfoMessageType.WARNING);
             }
         }
 
@@ -59,7 +59,7 @@ namespace HunterZone.Space
             }
             else
             {
-                InformationPanelUI.Instance.SendInformation($"Lobby name must be at least {minLobbyNameLength} symbols and {maxLobbyNameLength} max ", InfoMessageType.WARNING);
+                InformationPanelUI.Instance?.SendInformation($"Lobby name must be at least {minLobbyNameLength} symbols and {maxLobbyNameLength} max ", InfoMessageType.WARNING);
             }
         }
     }

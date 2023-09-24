@@ -1,6 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Unity.Services.Authentication;
 using Unity.Services.Lobbies;
 using Unity.Services.Lobbies.Models;
 using UnityEngine;
@@ -11,6 +13,9 @@ namespace HunterZone.Space
     {
         [SerializeField] private int maxPlayer = 8;
         public Lobby Lobby {  get; private set; }
+
+        public event Action OnLobbyHosted;
+        public event Action OnLobbyClosed;
 
         private static HostManager instance;
         public static HostManager Instance
@@ -27,11 +32,17 @@ namespace HunterZone.Space
         private float heartBeatTimer = 0f;
         private bool creatingLobby = false;
         private bool closingLobby = false;
+        private bool kickingPlayer = false;
 
         private void Awake()
         {
             instance = this;
             DontDestroyOnLoad(gameObject);
+        }
+
+        private async void OnDestroy()
+        {
+            await CloseLobbyAsync();
         }
 
         private void Update()
@@ -47,7 +58,7 @@ namespace HunterZone.Space
                 if (heartBeatTimer <= 0f)
                 {
                     heartBeatTimer = 15f;
-                    await Lobbies.Instance.SendHeartbeatPingAsync(Lobby.Id);
+                    await LobbyService.Instance.SendHeartbeatPingAsync(Lobby.Id);
                 }
             }
         }
@@ -70,19 +81,23 @@ namespace HunterZone.Space
                         {
                             {
                                 "PlayerName", new PlayerDataObject(PlayerDataObject.VisibilityOptions.Member, ClientManager.Instance.PlayerConfig.Name)
+                            },
+                            {
+                                "AuthId", new PlayerDataObject(PlayerDataObject.VisibilityOptions.Member, AuthenticationService.Instance.PlayerId)
                             }
                         }
                     }
                 };
                 Lobby = await Lobbies.Instance.CreateLobbyAsync(lobbyName, maxPlayer, _options);
-                InformationPanelUI.Instance.SendInformation($"Lobby with name {Lobby.Name} created successfuly!", InfoMessageType.SUCCESS);
+                OnLobbyHosted?.Invoke();
+                InformationPanelUI.Instance?.SendInformation($"Lobby with name {Lobby.Name} created successfuly!", InfoMessageType.SUCCESS);
                 creatingLobby = false;
                 heartBeatTimer = 15f;
             }
             catch (LobbyServiceException exception)
             {
                 Debug.LogException(exception);
-                InformationPanelUI.Instance.SendInformation(exception.ToString(), InfoMessageType.ERROR);
+                InformationPanelUI.Instance?.SendInformation(exception.ToString(), InfoMessageType.ERROR);
                 creatingLobby = false;
             }
         }
@@ -97,7 +112,8 @@ namespace HunterZone.Space
             try
             {
                 await LobbyService.Instance.DeleteLobbyAsync(Lobby.Id);
-                InformationPanelUI.Instance.SendInformation("Lobby closed", InfoMessageType.NOTE);
+                OnLobbyClosed?.Invoke();
+                InformationPanelUI.Instance?.SendInformation("Lobby closed", InfoMessageType.NOTE);
                 Lobby = null;
                 closingLobby = false;
                 return true;
@@ -105,8 +121,30 @@ namespace HunterZone.Space
             catch (LobbyServiceException exception)
             {
                 Debug.Log(exception);
-                InformationPanelUI.Instance.SendInformation("Lobby service error", InfoMessageType.ERROR);
+                InformationPanelUI.Instance?.SendInformation("Lobby service error", InfoMessageType.ERROR);
                 closingLobby = false;
+                return false;
+            }
+        }
+
+        public async Task<bool?> KickPlayerFromLobby(Player kickPlayer)
+        {
+            if (kickingPlayer || Lobby == null)
+            {
+                return null;
+            }
+            kickingPlayer = true;
+            try
+            {
+                await LobbyService.Instance?.RemovePlayerAsync(Lobby.Id, kickPlayer.Id);
+                kickingPlayer = false;
+                return true;
+            }
+            catch (LobbyServiceException exception)
+            {
+                Debug.Log(exception);
+                InformationPanelUI.Instance?.SendInformation("Lobby service error", InfoMessageType.ERROR);
+                kickingPlayer = false;
                 return false;
             }
         }

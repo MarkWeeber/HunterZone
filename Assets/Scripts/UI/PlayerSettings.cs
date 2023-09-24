@@ -30,16 +30,16 @@ namespace HunterZone.Space
                     PlayerPrefs.SetFloat(GlobalStringVars.PREFS_COLOR_B, ColorOptionUI.Color.b);
                     ClientManager.Instance.PlayerConfig.Name = playerNameInputField.text;
                     ClientManager.Instance.PlayerConfig.Color = ColorOptionUI.Color;
-                    InformationPanelUI.Instance.SendInformation("Save Successful!", InfoMessageType.SUCCESS);
+                    InformationPanelUI.Instance?.SendInformation("Save Successful!", InfoMessageType.SUCCESS);
                 }
                 else
                 {
-                    InformationPanelUI.Instance.SendInformation("Please pick color!", InfoMessageType.WARNING);
+                    InformationPanelUI.Instance?.SendInformation("Please pick color!", InfoMessageType.WARNING);
                 }
             }
             else
             {
-                InformationPanelUI.Instance.SendInformation($"Name must be at least {minPlayerNameLength} symbols and {maxPlayerNameLength} max ", InfoMessageType.WARNING);
+                InformationPanelUI.Instance?.SendInformation($"Name must be at least {minPlayerNameLength} symbols and {maxPlayerNameLength} max ", InfoMessageType.WARNING);
             }    
         }
     }

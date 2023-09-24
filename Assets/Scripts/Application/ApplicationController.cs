@@ -19,6 +19,14 @@ namespace HunterZone.Space
             }
         }
 
+        private async void Start()
+        {
+            if(PlayerAuthentication.Instance != null)
+            {
+                await PlayerAuthentication.Instance.Initialize();
+            }
+        }
+
         private void SpawPrefabs()
         {
             foreach (GameObject prefab in spawnPrefabs)

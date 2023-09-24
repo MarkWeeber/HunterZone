@@ -2,11 +2,13 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using TMPro;
 using Unity.Services.Authentication;
 using Unity.Services.Lobbies;
 using Unity.Services.Lobbies.Models;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace HunterZone.Space
 {
@@ -16,62 +18,128 @@ namespace HunterZone.Space
         [SerializeField] private GameObject lobbyItemPrefab;
         [SerializeField] private TMP_Text lobbyNameTitle;
         [SerializeField] private bool host = true;
+        [SerializeField] private UnityEvent OnKicked = new UnityEvent();
         private Lobby lobby = null;
+        public bool lobbyPersists = false;
         private GameObject instantiatedGameObject;
         private TMP_Text playerNameText;
         private List<LobbyItem> playersList = new List<LobbyItem>();
         private LobbyItem lobbyItem;
-        LobbyEventCallbacks lobbyCallbacks;
+        private float lobbyUpdateTimer = 0f;
 
-        private async void OnEnable()
+        private void Start()
         {
-            if (lobby == null)
+            if(host)
             {
-                if (host)
-                {
-                    lobby = HostManager.Instance.Lobby;
-                }
-                else
-                {
-                    lobby = ClientManager.Instance.Lobby;
-                }
-                if (lobby != null)
-                {
-                    lobbyNameTitle.text = $"{lobby.Name} lobby";
-                    lobbyCallbacks = new LobbyEventCallbacks();
-                    lobbyCallbacks.PlayerJoined += OnPlayerJoined;
-                    lobbyCallbacks.PlayerLeft += OnPlayerLeft;
-                    UpdatePlayersList();
-                    await Lobbies.Instance.SubscribeToLobbyEventsAsync(lobby.Id, lobbyCallbacks);
-                }
-                else
-                {
-                    return;
-                }
+                HostManager.Instance.OnLobbyHosted += OnLobbyHosted;
+                HostManager.Instance.OnLobbyClosed += OnLobbyClosed;
             }
             else
             {
-                UpdatePlayersList();
+                ClientManager.Instance.OnLobbyJoined += OnLobbyJoined;
+                ClientManager.Instance.OnLobbyLeft += OnLobbyLeft;
             }
+        }
+
+        private void OnLobbyLeft()
+        {
+            lobby = null;
+            lobbyPersists = false;
+        }
+
+        private void OnLobbyJoined()
+        {
+            lobby = ClientManager.Instance.Lobby;
+            lobbyNameTitle.text = lobby.Name;
+            lobbyPersists = true;
+        }
+
+        private void OnLobbyClosed()
+        {
+            lobby = null;
+            lobbyPersists = false;
+        }
+
+        private void OnLobbyHosted()
+        {
+            lobby = HostManager.Instance.Lobby;
+            lobbyNameTitle.text = lobby.Name;
+            lobbyPersists = true;
         }
 
         private void OnDestroy()
         {
             ClearPlayersList();
             lobby = null;
+            if (host)
+            {
+                HostManager.Instance.OnLobbyHosted -= OnLobbyHosted;
+                HostManager.Instance.OnLobbyClosed -= OnLobbyClosed;
+            }
+            else
+            {
+                ClientManager.Instance.OnLobbyJoined -= OnLobbyJoined;
+                ClientManager.Instance.OnLobbyLeft -= OnLobbyLeft;
+            }
+        }
+
+        private void Update()
+        {
+            HandleLobbyUpdate();
+        }
+
+        private async void HandleLobbyUpdate()
+        {
+            if (lobbyPersists)
+            {
+                lobbyUpdateTimer -= Time.deltaTime;
+                if (lobbyUpdateTimer <= 0f)
+                {
+                    lobbyUpdateTimer = 1.1f;
+                    try
+                    {
+                        lobby = await LobbyService.Instance.GetLobbyAsync(lobby.Id);
+                        if (lobby != null)
+                        {
+                            UpdatePlayersList();
+                        }
+                        else
+                        {
+                            InformationPanelUI.Instance?.SendInformation("Lobby closed", InfoMessageType.WARNING);
+                            HandleLobbyUnavailable();
+                            lobbyPersists = false;
+                        }
+                    }
+                    catch (LobbyServiceException exception)
+                    {
+                        InformationPanelUI.Instance?.SendInformation("Lobby closed", InfoMessageType.WARNING);
+                        Debug.Log(exception);
+                        HandleLobbyUnavailable();
+                        lobbyPersists = false;
+                    }
+                }
+            }
         }
 
         private void UpdatePlayersList()
         {
-            if(lobby == null)
-            {
-                return;
-            }
             ClearPlayersList();
-            foreach (Player _player in lobby.Players)
+            foreach (Player _player in lobby.Players) // new players
             {
+                Debug.Log(_player.ConnectionInfo);
                 AddPlayerToList(_player);
+                //if (playersList.FirstOrDefault(x => x.Player.Id == _player.Id) == null)
+                //{
+                //    AddPlayerToList(_player); // new player found, adding it
+                //}
             }
+            //foreach (LobbyItem _player in playersList.ToList()) // missing players
+            //{
+            //    if (lobby.Players.FirstOrDefault(x => x.Id == _player.Player.Id) == null)
+            //    {
+            //        RemovePlayerFromList(_player); // clearing missing player from our list
+            //    }
+            //}
         }
 
         private void AddPlayerToList(Player player)
@@ -87,36 +155,36 @@ namespace HunterZone.Space
             playersList.Add(lobbyItem);
         }
 
-        private void RemovePlayerFromList(Player player)
+        private void RemovePlayerFromList(LobbyItem player)
         {
-            playersList.Remove(playersList.FirstOrDefault(item => item.Player == player));
+            playersList.Remove(player);
+            Destroy(player.gameObject);
         }
 
         private void ClearPlayersList()
         {
-            Debug.Log("Clearing");
-            foreach (LobbyItem _player in playersList)
+            foreach (LobbyItem _player in playersList.ToList())
             {
-                Debug.Log("Destroying:" + _player.gameObject.name);
                 Destroy(_player.gameObject);
             }
             playersList.Clear();
         }
 
-
-        private void OnPlayerJoined(List<LobbyPlayerJoined> list)
+        private void HandleLobbyUnavailable()
         {
-            foreach (LobbyPlayerJoined item in list)
-            {
-                AddPlayerToList(item.Player);
-            }
+            ClearPlayersList();
+            OnKicked?.Invoke();
         }
 
-        private void OnPlayerLeft(List<int> list)
+        private async Task KickAllOtherPlayer()
         {
-            foreach (int item in list)
+            foreach (Player _player in lobby.Players)
             {
-                Debug.Log($"Player left:  {item}");
+                if (_player.Id == AuthenticationService.Instance.PlayerId)
+                {
+                    continue;
+                }
+                await HostManager.Instance.KickPlayerFromLobby(_player);
             }
         }
 
@@ -126,6 +194,7 @@ namespace HunterZone.Space
             if (result == true)
             {
                 ClearPlayersList();
+                lobbyPersists = false;
                 if (callBackUI != null)
                 {
                     callBackUI.Actions?.Invoke();
@@ -135,7 +204,6 @@ namespace HunterZone.Space
             {
                 return;
             }
-            
         }
 
         public async void LeaveLobby(CallBackUI callBackUI = null)
@@ -144,6 +212,7 @@ namespace HunterZone.Space
             if (result == true)
             {
                 ClearPlayersList();
+                lobbyPersists = false;
                 if (callBackUI != null)
                 {
                     callBackUI.Actions?.Invoke();

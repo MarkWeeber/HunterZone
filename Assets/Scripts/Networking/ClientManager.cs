@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Unity.Netcode;
 using Unity.Services.Authentication;
 using Unity.Services.Lobbies;
 using Unity.Services.Lobbies.Models;
@@ -26,6 +27,8 @@ namespace HunterZone.Space
         }
         public PlayerConfig PlayerConfig { get; set; }
         public Lobby Lobby { get; private set; }
+        public event Action OnLobbyJoined;
+        public event Action OnLobbyLeft;
 
         private bool joining = false;
         private bool leavingLobby = false;
@@ -41,6 +44,11 @@ namespace HunterZone.Space
                 PlayerPrefs.GetFloat(GlobalStringVars.PREFS_COLOR_B, 0),
                 1);
             DontDestroyOnLoad(gameObject);
+        }
+
+        private async void OnDestroy()
+        {
+            await LeaveLobbyAsync();
         }
 
         public async Task JoinLobbyByNameAsync(string lobbyName)
@@ -75,16 +83,20 @@ namespace HunterZone.Space
                             {
                                 {
                                     "PlayerName", new PlayerDataObject(PlayerDataObject.VisibilityOptions.Member, ClientManager.Instance.PlayerConfig.Name)
+                                },
+                                {
+                                    "AuthId", new PlayerDataObject(PlayerDataObject.VisibilityOptions.Member, AuthenticationService.Instance.PlayerId)
                                 }
                             }
                         }
                     };
                     Lobby = await Lobbies.Instance.JoinLobbyByIdAsync(Lobby.Id, _joinLobbyByIdOptions); // joining lobby
-                    InformationPanelUI.Instance.SendInformation($"Joined successfuly to {lobbyName} lobby", InfoMessageType.SUCCESS);
+                    OnLobbyJoined?.Invoke();
+                    InformationPanelUI.Instance?.SendInformation($"Joined successfuly to {lobbyName} lobby", InfoMessageType.SUCCESS);
                 }
                 else
                 {
-                    InformationPanelUI.Instance.SendInformation($"No lobby with name {lobbyName} found!", InfoMessageType.WARNING);
+                    InformationPanelUI.Instance?.SendInformation($"No lobby with name {lobbyName} found!", InfoMessageType.WARNING);
                 }
                 joining = false;
 
@@ -92,7 +104,7 @@ namespace HunterZone.Space
             catch (LobbyServiceException exception)
             {
                 Debug.LogException(exception);
-                InformationPanelUI.Instance.SendInformation("Lobby service error", InfoMessageType.ERROR);
+                InformationPanelUI.Instance?.SendInformation("Lobby service error", InfoMessageType.ERROR);
                 joining = false;
             }
         }
@@ -107,7 +119,8 @@ namespace HunterZone.Space
             try
             {
                 await LobbyService.Instance.RemovePlayerAsync(Lobby.Id, AuthenticationService.Instance.PlayerId);
-                InformationPanelUI.Instance.SendInformation("Lobby left", InfoMessageType.NOTE);
+                OnLobbyLeft?.Invoke();
+                InformationPanelUI.Instance?.SendInformation("Lobby left", InfoMessageType.NOTE);
                 Lobby = null;
                 leavingLobby = false;
                 return true;
@@ -115,7 +128,7 @@ namespace HunterZone.Space
             catch (LobbyServiceException exception)
             {
                 Debug.Log(exception);
-                InformationPanelUI.Instance.SendInformation("Lobby service error", InfoMessageType.ERROR);
+                InformationPanelUI.Instance?.SendInformation("Lobby service error", InfoMessageType.ERROR);
                 leavingLobby = false;
                 return false;
             }

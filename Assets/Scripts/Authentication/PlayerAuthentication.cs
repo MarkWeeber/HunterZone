@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using Unity.Netcode;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
 using UnityEngine;
@@ -22,16 +24,62 @@ namespace HunterZone.Space
             }
         }
 
+        private NetworkManager networkManager;
+
         private void Awake()
         {
             instance = this;
         }
 
-        private async void Start()
+        public async Task<bool?> Initialize()
         {
-            await UnityServices.InitializeAsync();
-            AuthenticationService.Instance.SignedIn += HandleAuthenticated;
-            await AuthenticationService.Instance.SignInAnonymouslyAsync();
+            bool? result = null;
+            try
+            {
+                await UnityServices.InitializeAsync();
+                AuthenticationService.Instance.SignedIn += HandleAuthenticated;
+                await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                networkManager = NetworkManager.Singleton;
+                networkManager.OnClientDisconnectCallback += HandleDisconnect;
+                result = true;
+            }
+            catch (AuthenticationException authException)
+            {
+                Debug.LogWarning(authException);
+                result = false;
+            }
+            catch (RequestFailedException requestFailException)
+            {
+                Debug.LogWarning(requestFailException);
+                result = false;
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning(exception);
+                result = false;
+            }
+            return result;
+
+        }
+
+        private void HandleDisconnect(ulong clientId)
+        {
+            if (clientId != 0 && clientId != networkManager.LocalClientId)
+            {
+                return;
+            }
+            if (networkManager.IsConnectedClient)
+            {
+                networkManager.Shutdown();
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (networkManager != null)
+            {
+                networkManager.OnClientDisconnectCallback -= HandleDisconnect;
+            }
         }
 
         private void HandleAuthenticated()
