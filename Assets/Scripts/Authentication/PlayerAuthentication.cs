@@ -79,31 +79,6 @@ namespace HunterZone.Space
             await AuthenticationService.Instance.SignInAnonymouslyAsync();
             signingIn = false;
             return AuthenticationService.Instance.IsSignedIn;
-            //try
-            //{
-            //    Task waitForSignedIn = WaitForSignedIn();
-            //    await UnityServices.InitializeAsync();
-            //    AuthenticationService.Instance.SignedIn += HandleAuthenticated;
-            //    await AuthenticationService.Instance.SignInAnonymouslyAsync();
-            //    networkManager = NetworkManager.Singleton;
-            //    networkManager.OnClientDisconnectCallback += HandleDisconnect;
-            //    return true;
-            //}
-            //catch (AuthenticationException authException)
-            //{
-            //    Debug.LogWarning(authException);
-            //    return false;
-            //}
-            //catch (RequestFailedException requestFailException)
-            //{
-            //    Debug.LogWarning(requestFailException);
-            //    return false;
-            //}
-            //catch (Exception exception)
-            //{
-            //    Debug.LogWarning(exception);
-            //    return false;
-            //}
             async Task WaitForSignedIn()
             {
                 while (!AuthenticationService.Instance.IsSignedIn)

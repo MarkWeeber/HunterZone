@@ -31,9 +31,16 @@ namespace HunterZone.Space
             DontDestroyOnLoad(gameObject);
         }
 
-        private async void OnDestroy()
+        private void OnDestroy()
         {
-            await CloseLobbyAsync();
+            Debug.Log("HOST ON DESTROY");
+            if (Lobby != null)
+            {
+#pragma warning disable 4014
+                CloseLobbyAsync();
+#pragma warning restore 4014
+            }
+            Debug.Log("HOST ON DESTROY END");
         }
 
         private void Update()
@@ -54,11 +61,11 @@ namespace HunterZone.Space
             }
         }
 
-        public async Task CreateLobbyAsync(string lobbyName)
+        public async Task<bool> CreateLobbyAsync(string lobbyName)
         {
             if (creatingLobby)
             {
-                return;
+                return false;
             }
             creatingLobby = true;
             try
@@ -80,24 +87,27 @@ namespace HunterZone.Space
                     }
                 };
                 Lobby = await Lobbies.Instance.CreateLobbyAsync(lobbyName, maxPlayer, _options);
+                await Task.Delay(200);
                 OnLobbyHosted?.Invoke();
                 InformationPanelUI.Instance?.SendInformation($"Lobby with name {Lobby.Name} created successfuly!", InfoMessageType.SUCCESS);
                 creatingLobby = false;
                 heartBeatTimer = 15f;
+                return true;
             }
             catch (LobbyServiceException exception)
             {
                 Debug.LogException(exception);
                 InformationPanelUI.Instance?.SendInformation(exception.ToString(), InfoMessageType.ERROR);
                 creatingLobby = false;
+                return false;
             }
         }
 
-        public async Task<bool?> CloseLobbyAsync()
+        public async Task<bool> CloseLobbyAsync()
         {
             if (closingLobby || Lobby == null)
             {
-                return null;
+                return false;
             }
             closingLobby = true;
             try
@@ -118,12 +128,13 @@ namespace HunterZone.Space
             }
         }
 
-        public async Task<bool?> KickPlayerFromLobby(Player kickPlayer)
+        public async Task<bool> KickPlayerFromLobby(Player kickPlayer)
         {
             if (kickingPlayer || Lobby == null)
             {
-                return null;
+                return false;
             }
+            Debug.Log("Kicking player");
             kickingPlayer = true;
             try
             {

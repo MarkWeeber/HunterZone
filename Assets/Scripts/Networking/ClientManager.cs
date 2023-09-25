@@ -38,16 +38,21 @@ namespace HunterZone.Space
 
         private async void OnDestroy()
         {
-            Debug.Log("Leaving lobby!");
-            await LeaveLobbyAsync();
-            Debug.Log("Lobby left!");
+            Debug.Log("CLIENT ON DESTROY");
+            if(Lobby != null)
+            {
+#pragma warning disable 4014
+                await LobbyService.Instance.RemovePlayerAsync(Lobby.Id, AuthenticationService.Instance.PlayerId);
+#pragma warning restore 4014
+            }
+            Debug.Log("CLIENT ON DESTROY END");
         }
 
-        public async Task JoinLobbyByNameAsync(string lobbyName)
+        public async Task<bool> JoinLobbyByNameAsync(string lobbyName)
         {
             if (joining)
             {
-                return;
+                return false;
             }
             joining = true;
             try
@@ -67,6 +72,15 @@ namespace HunterZone.Space
                 if (queryResponse.Results.Count > 0)
                 {
                     Lobby = queryResponse.Results[0];
+                    await Task.Delay(100);
+                    Lobby = await LobbyService.Instance.GetLobbyAsync(Lobby.Id);
+                    await Task.Delay(100);
+                    if (Lobby == null)
+                    {
+                        InformationPanelUI.Instance?.SendInformation($"No lobby with name {lobbyName} found!", InfoMessageType.WARNING);
+                        joining = false;
+                        return false;
+                    }
                     JoinLobbyByIdOptions _joinLobbyByIdOptions = new JoinLobbyByIdOptions()
                     {
                         Player = new Player
@@ -83,29 +97,38 @@ namespace HunterZone.Space
                         }
                     };
                     Lobby = await Lobbies.Instance.JoinLobbyByIdAsync(Lobby.Id, _joinLobbyByIdOptions); // joining lobby
+                    await Task.Delay(200);
+                    if (Lobby == null)
+                    {
+                        joining = false;
+                        return false;
+                    }
                     OnLobbyJoined?.Invoke();
                     InformationPanelUI.Instance?.SendInformation($"Joined successfuly to {lobbyName} lobby", InfoMessageType.SUCCESS);
+                    joining = false;
+                    return true;
                 }
                 else
                 {
                     InformationPanelUI.Instance?.SendInformation($"No lobby with name {lobbyName} found!", InfoMessageType.WARNING);
+                    joining = false;
+                    return false;
                 }
-                joining = false;
-
             }
             catch (LobbyServiceException exception)
             {
                 Debug.LogException(exception);
                 InformationPanelUI.Instance?.SendInformation("Lobby service error", InfoMessageType.ERROR);
                 joining = false;
+                return false;
             }
         }
 
-        public async Task<bool?> LeaveLobbyAsync()
+        public async Task<bool> LeaveLobbyAsync()
         {
             if (leavingLobby || Lobby == null)
             {
-                return null;
+                return false;
             }
             leavingLobby = true;
             try

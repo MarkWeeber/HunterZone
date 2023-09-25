@@ -47,8 +47,7 @@ namespace HunterZone.Space
         {
             if (searchLobbyInputField.text.Length >= minLobbyNameLength && searchLobbyInputField.text.Length <= maxLobbyNameLength)
             {
-                await ClientManager.Instance.JoinLobbyByNameAsync(searchLobbyInputField.text);
-                if (ClientManager.Instance.Lobby != null)
+                if(await ClientManager.Instance.JoinLobbyByNameAsync(searchLobbyInputField.text))
                 {
                     PlayerPrefs.SetString(GlobalStringVars.PREFS_SEARCHEDLOBBY_NAME, searchLobbyInputField.text);
                     if (callBackUI != null)
