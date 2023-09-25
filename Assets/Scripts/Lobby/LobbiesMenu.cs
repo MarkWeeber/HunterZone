@@ -23,7 +23,7 @@ namespace HunterZone.Space
         public bool lobbyPersists = false;
         private GameObject instantiatedGameObject;
         private TMP_Text playerNameText;
-        private List<LobbyItem> playersList = new List<LobbyItem>();
+        //private List<LobbyItem> playersList = new List<LobbyItem>();
         private LobbyItem lobbyItem;
         private float lobbyUpdateTimer = 0f;
 
@@ -95,16 +95,18 @@ namespace HunterZone.Space
                 lobbyUpdateTimer -= Time.deltaTime;
                 if (lobbyUpdateTimer <= 0f)
                 {
-                    lobbyUpdateTimer = 1.1f;
+                    lobbyUpdateTimer = 1.5f;
                     try
                     {
                         lobby = await LobbyService.Instance.GetLobbyAsync(lobby.Id);
                         if (lobby != null)
                         {
                             UpdatePlayersList();
+                            Debug.Log("Lobby persists");
                         }
                         else
                         {
+                            Debug.Log("Lobby is null");
                             InformationPanelUI.Instance?.SendInformation("Lobby closed", InfoMessageType.WARNING);
                             HandleLobbyUnavailable();
                             lobbyPersists = false;
@@ -112,6 +114,7 @@ namespace HunterZone.Space
                     }
                     catch (LobbyServiceException exception)
                     {
+                        Debug.Log("Lobby exception");
                         InformationPanelUI.Instance?.SendInformation("Lobby closed", InfoMessageType.WARNING);
                         Debug.Log(exception);
                         HandleLobbyUnavailable();
@@ -126,8 +129,8 @@ namespace HunterZone.Space
             ClearPlayersList();
             foreach (Player _player in lobby.Players) // new players
             {
-                Debug.Log(_player.ConnectionInfo);
                 AddPlayerToList(_player);
+                Debug.Log(_player.Data["PlayerName"].Value);
                 //if (playersList.FirstOrDefault(x => x.Player.Id == _player.Id) == null)
                 //{
                 //    AddPlayerToList(_player); // new player found, adding it
@@ -152,26 +155,31 @@ namespace HunterZone.Space
             {
                 playerNameText.text = player.Data["PlayerName"].Value;
             }
-            playersList.Add(lobbyItem);
+            //playersList.Add(lobbyItem);
         }
 
         private void RemovePlayerFromList(LobbyItem player)
         {
-            playersList.Remove(player);
+            //playersList.Remove(player);
             Destroy(player.gameObject);
         }
 
         private void ClearPlayersList()
         {
-            foreach (LobbyItem _player in playersList.ToList())
+            foreach (Transform child in lobbiesListContentHolder.transform)
             {
-                Destroy(_player.gameObject);
+                Destroy(child.gameObject);
             }
-            playersList.Clear();
+            //foreach (LobbyItem _player in playersList.ToList())
+            //{
+            //    Destroy(_player.gameObject);
+            //}
+            //playersList.Clear();
         }
 
         private void HandleLobbyUnavailable()
         {
+            Debug.Log("Handle lobby not available");
             ClearPlayersList();
             OnKicked?.Invoke();
         }

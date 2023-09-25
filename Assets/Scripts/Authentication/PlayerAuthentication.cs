@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Unity.Netcode;
 using Unity.Services.Authentication;
@@ -11,55 +12,105 @@ namespace HunterZone.Space
 {
     public class PlayerAuthentication : MonoBehaviour
     {
+        const int c_initTimeout = 10000;
         private static PlayerAuthentication instance;
-        public static PlayerAuthentication Instance
-        {
-            get
-            {
-                if (instance == null)
-                {
-                    instance = new PlayerAuthentication();
-                }
-                return instance;
-            }
-        }
+        public static PlayerAuthentication Instance => instance;
 
         private NetworkManager networkManager;
+        private bool signingIn = false;
 
         private void Awake()
         {
             instance = this;
         }
 
-        public async Task<bool?> Initialize()
+        private async Task<bool> TryInitServicesAsync(string profileName = null)
         {
-            bool? result = null;
-            try
+            if (UnityServices.State == ServicesInitializationState.Initialized)
+            {
+                return true;
+            }
+            if (UnityServices.State == ServicesInitializationState.Initializing)
+            {
+                Task task = WaitForInitialized();
+                if (await Task.WhenAny(task, Task.Delay(c_initTimeout)) != task)
+                {
+                    return false;
+                }
+                return UnityServices.State == ServicesInitializationState.Initialized;
+            }
+            if (profileName != null)
+            {
+                Regex rgx = new Regex("[^a-zA-Z0-9 - _]");
+                profileName = rgx.Replace(profileName, "");
+                var authProfile = new InitializationOptions().SetProfile(profileName);
+                await UnityServices.InitializeAsync(authProfile);
+            }
+            else
             {
                 await UnityServices.InitializeAsync();
-                AuthenticationService.Instance.SignedIn += HandleAuthenticated;
-                await AuthenticationService.Instance.SignInAnonymouslyAsync();
-                networkManager = NetworkManager.Singleton;
-                networkManager.OnClientDisconnectCallback += HandleDisconnect;
-                result = true;
             }
-            catch (AuthenticationException authException)
+            return UnityServices.State == ServicesInitializationState.Initialized;
+            async Task WaitForInitialized()
             {
-                Debug.LogWarning(authException);
-                result = false;
-            }
-            catch (RequestFailedException requestFailException)
-            {
-                Debug.LogWarning(requestFailException);
-                result = false;
-            }
-            catch (Exception exception)
-            {
-                Debug.LogWarning(exception);
-                result = false;
-            }
-            return result;
+                while (UnityServices.State != ServicesInitializationState.Initialized)
+                {
+                    await Task.Delay(100);
+                }
+            };
+        }
 
+        public async Task<bool> TrySignInAsync(string profileName = null)
+        {
+            if (!await TryInitServicesAsync(profileName))
+            {
+                return false;
+            }
+            if (signingIn)
+            {
+                Task task = WaitForSignedIn();
+                if (await Task.WhenAny() != task)
+                {
+                    return false;
+                }
+                return AuthenticationService.Instance.IsSignedIn;
+            }
+            signingIn = true;
+            await AuthenticationService.Instance.SignInAnonymouslyAsync();
+            signingIn = false;
+            return AuthenticationService.Instance.IsSignedIn;
+            //try
+            //{
+            //    Task waitForSignedIn = WaitForSignedIn();
+            //    await UnityServices.InitializeAsync();
+            //    AuthenticationService.Instance.SignedIn += HandleAuthenticated;
+            //    await AuthenticationService.Instance.SignInAnonymouslyAsync();
+            //    networkManager = NetworkManager.Singleton;
+            //    networkManager.OnClientDisconnectCallback += HandleDisconnect;
+            //    return true;
+            //}
+            //catch (AuthenticationException authException)
+            //{
+            //    Debug.LogWarning(authException);
+            //    return false;
+            //}
+            //catch (RequestFailedException requestFailException)
+            //{
+            //    Debug.LogWarning(requestFailException);
+            //    return false;
+            //}
+            //catch (Exception exception)
+            //{
+            //    Debug.LogWarning(exception);
+            //    return false;
+            //}
+            async Task WaitForSignedIn()
+            {
+                while (!AuthenticationService.Instance.IsSignedIn)
+                {
+                    await Task.Delay(100);
+                }
+            }
         }
 
         private void HandleDisconnect(ulong clientId)

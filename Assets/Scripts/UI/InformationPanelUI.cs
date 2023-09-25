@@ -30,7 +30,7 @@ namespace HunterZone.Space
         private string messageText;
         private float fadeOutTimer;
 
-        private void Start()
+        private void Awake()
         {
             instance = this;
             DontDestroyOnLoad(gameObject);

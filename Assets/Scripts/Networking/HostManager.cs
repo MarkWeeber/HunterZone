@@ -18,17 +18,8 @@ namespace HunterZone.Space
         public event Action OnLobbyClosed;
 
         private static HostManager instance;
-        public static HostManager Instance
-        {
-            get
-            {
-                if (instance == null)
-                {
-                    instance = new HostManager();
-                }
-                return instance;
-            }
-        }
+        public static HostManager Instance => instance;
+
         private float heartBeatTimer = 0f;
         private bool creatingLobby = false;
         private bool closingLobby = false;

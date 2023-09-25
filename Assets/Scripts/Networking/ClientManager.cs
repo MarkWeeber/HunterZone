@@ -14,17 +14,7 @@ namespace HunterZone.Space
     public class ClientManager : MonoBehaviour
     {
         private static ClientManager instance;
-        public static ClientManager Instance
-        {
-            get
-            {
-                if (instance == null)
-                {
-                    instance = new ClientManager();
-                }
-                return instance;
-            }
-        }
+        public static ClientManager Instance => instance;
         public PlayerConfig PlayerConfig { get; set; }
         public Lobby Lobby { get; private set; }
         public event Action OnLobbyJoined;
@@ -48,7 +38,9 @@ namespace HunterZone.Space
 
         private async void OnDestroy()
         {
+            Debug.Log("Leaving lobby!");
             await LeaveLobbyAsync();
+            Debug.Log("Lobby left!");
         }
 
         public async Task JoinLobbyByNameAsync(string lobbyName)
