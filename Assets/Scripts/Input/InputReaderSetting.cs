@@ -8,18 +8,7 @@ namespace HunterZone.Space
     {
         [field: SerializeField] public InputReader InputReader {  get; private set; }
         private static InputReaderSetting instance;
-        public static InputReaderSetting Instance
-        {
-            get
-            {
-                if (instance == null)
-                {
-                    instance = new InputReaderSetting();
-                }
-                return instance;
-            }
-        }
-
+        public static InputReaderSetting Instance { get => instance; }
         private void Awake()
         {
             instance = this;

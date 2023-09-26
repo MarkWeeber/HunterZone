@@ -79,7 +79,7 @@ namespace HunterZone.Space
 
         private async void OnDestroy()
         {
-            ClearPlayersList();
+            lobbyPersists = false;
             lobby = null;
             if (host)
             {
@@ -178,7 +178,7 @@ namespace HunterZone.Space
 
         private void ClearPlayersList()
         {
-            if (lobbiesListContentHolder == null || playersList == null || !playersList.Any())
+            if (lobbiesListContentHolder == null || playersList == null || !playersList.Any() || !lobbyPersists)
             {
                 return;
             }

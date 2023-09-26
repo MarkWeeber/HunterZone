@@ -39,13 +39,26 @@ namespace HunterZone.Space
         private async void OnDestroy()
         {
             Debug.Log("CLIENT ON DESTROY");
-            if(Lobby != null)
+            if (Lobby != null)
             {
-#pragma warning disable 4014
-                await LobbyService.Instance.RemovePlayerAsync(Lobby.Id, AuthenticationService.Instance.PlayerId);
-#pragma warning restore 4014
+//#pragma warning disable 4014
+                await ForceLeave();
+//#pragma warning restore 4014
             }
             Debug.Log("CLIENT ON DESTROY END");
+        }
+
+        private async Task ForceLeave()
+        {
+            //await ParallelWait();
+            //await LeaveLobbyAsync();
+            await Task.WhenAll(ParallelWait(), LeaveLobbyAsync());
+        }
+
+        private async Task ParallelWait()
+        {
+            await Task.Delay(500);
+            Debug.Log("WAIT OVER");
         }
 
         public async Task<bool> JoinLobbyByNameAsync(string lobbyName)
@@ -138,6 +151,7 @@ namespace HunterZone.Space
                 InformationPanelUI.Instance?.SendInformation("Lobby left", InfoMessageType.NOTE);
                 Lobby = null;
                 leavingLobby = false;
+                Debug.Log("LOBBY LEAVE SUCCESS");
                 return true;
             }
             catch (LobbyServiceException exception)

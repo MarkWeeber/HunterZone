@@ -16,7 +16,7 @@ namespace HunterZone.Space
         private void Start()
         {
             colorOptionButtons = GetComponentsInChildren<Button>().ToList();
-            Color = ClientManager.Instance.PlayerConfig.Color;
+            Color = LobbySingleton.Instance.LobbyManager.PlayerConfig.Color;
             colorPreviwer.color = Color;
         }
 

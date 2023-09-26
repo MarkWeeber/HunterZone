@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using TMPro;
 using Unity.Services.Lobbies;
 using UnityEngine;
@@ -17,8 +18,11 @@ namespace HunterZone.Space
         [SerializeField] private int minLobbyNameLength = 3;
         [SerializeField] private int maxLobbyNameLength = 25;
 
+        private LobbyManager lobbyManager;
+
         private void Start ()
         {
+            lobbyManager = LobbySingleton.Instance.LobbyManager;
             createLobbyInputField.text = PlayerPrefs.GetString(GlobalStringVars.PREFS_CREATEDLOBBY_NAME, string.Empty);
             searchLobbyInputField.text = PlayerPrefs.GetString(GlobalStringVars.PREFS_SEARCHEDLOBBY_NAME, string.Empty);
         }
@@ -27,13 +31,16 @@ namespace HunterZone.Space
         {
             if (createLobbyInputField.text.Length >= minLobbyNameLength && createLobbyInputField.text.Length <= maxLobbyNameLength)
             {
-                await HostManager.Instance.CreateLobbyAsync(createLobbyInputField.text);
-                if (HostManager.Instance.Lobby != null)
+                if (await lobbyManager.CreateLobbyAsync(createLobbyInputField.text))
                 {
-                    PlayerPrefs.SetString(GlobalStringVars.PREFS_CREATEDLOBBY_NAME, createLobbyInputField.text);
-                    if (callBackUI != null)
+                    await Task.Delay(500);
+                    if (lobbyManager.JoinedLobby != null)
                     {
-                        callBackUI.Actions?.Invoke();
+                        PlayerPrefs.SetString(GlobalStringVars.PREFS_CREATEDLOBBY_NAME, createLobbyInputField.text);
+                        if (callBackUI != null)
+                        {
+                            callBackUI.Actions?.Invoke();
+                        }
                     }
                 }
             }
@@ -47,12 +54,16 @@ namespace HunterZone.Space
         {
             if (searchLobbyInputField.text.Length >= minLobbyNameLength && searchLobbyInputField.text.Length <= maxLobbyNameLength)
             {
-                if(await ClientManager.Instance.JoinLobbyByNameAsync(searchLobbyInputField.text))
+                if(await lobbyManager.JoinLobbyByNameAsync(searchLobbyInputField.text))
                 {
-                    PlayerPrefs.SetString(GlobalStringVars.PREFS_SEARCHEDLOBBY_NAME, searchLobbyInputField.text);
-                    if (callBackUI != null)
+                    await Task.Delay(500);
+                    if (lobbyManager.JoinedLobby != null)
                     {
-                        callBackUI.Actions?.Invoke();
+                        PlayerPrefs.SetString(GlobalStringVars.PREFS_SEARCHEDLOBBY_NAME, searchLobbyInputField.text);
+                        if (callBackUI != null)
+                        {
+                            callBackUI.Actions?.Invoke();
+                        }
                     }
                 }
             }
